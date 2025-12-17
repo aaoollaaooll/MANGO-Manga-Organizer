@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANGO Organizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* VARIABLES DE COLOR */
+        :root {
+            --primary: #3b82f6; 
+            --primary-hover: #2563eb;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+            --error: #ef4444;
+            --error-bg: #fef2f2;
+            --dropzone-bg: #f9fafb;
+            --dropzone-hover: #eff6ff;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --chapter-color: #8b5cf6;
+            --cover-color: #10b981;
+            --pin-color: #059669; /* Verde para fijado */
+            --select-color: #f97316; /* Naranja para selección */
+        }
+
+        /* TEMA OSCURO (NEGRO) */
+        [data-theme="dark"] {
+            --primary: #60a5fa;
+            --primary-hover: #3b82f6;
+            --bg: #0a0a0a;
+            --surface: #1a1a1a;
+            --text: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border: #333333;
+            --error: #f87171;
+            --error-bg: #450a0a;
+            --dropzone-bg: #1a1a1a;
+            --dropzone-hover: #333333;
+            --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.2);
+            --chapter-color: #a78bfa;
+            --cover-color: #34d399;
+            --pin-color: #34d399;
+            --select-color: #fb923c;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif; margin: 0; padding: 20px;
+            background: var(--bg); color: var(--text);
+            transition: background 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 30px; padding: 0 10px;
+            flex-wrap: wrap; 
+        }
+        
+        /* ESTILOS DEL NUEVO LOGO */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo-icon {
+            font-size: 32px;
+            line-height: 1;
+        }
+        .logo-text h1 { 
+            margin: 0; 
+            font-size: 28px; 
+            font-weight: 800; 
+            letter-spacing: -0.05em; 
+            line-height: 1;
+        }
+        .logo-text p {
+            margin: 0;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            line-height: 1;
+        }
+        
+        /* CONTROLES DE CABECERA (DESCARGA, HISTORIAL, TEMA) */
+        .header-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+        
+        /* Botones generales */
+        .btn { 
+            padding: 10px 16px; border-radius: 8px; border: none; font-size: 14px; 
+            cursor: pointer; font-weight: 600; transition: all 0.2s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .theme-toggle {
+            background: var(--surface); border: 1px solid var(--border);
+            color: var(--text); width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; font-size: 18px; display: flex; justify-content: center; align-items: center;
+            transition: all 0.2s; box-shadow: var(--shadow-sm);
+        }
+        .theme-toggle:hover { transform: scale(1.1); box-shadow: var(--shadow-md); }
+
+        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+        
+        .panel { 
+            background: var(--surface); padding: 24px; border-radius: var(--radius); 
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+        }
+        
+        /* PESTAÑAS DE VISTA (FIX: Solo queda Organizador) */
+        .view-tabs { 
+            display: flex; 
+            justify-content: center; /* FIX: Centrar el contenido de la pestaña */
+            margin-bottom: 20px; 
+            border-bottom: 1px solid var(--border); 
+        }
+        .view-tabs button {
+            background: none; border: none; padding: 10px 15px; cursor: pointer;
+            font-weight: 500; color: var(--text-secondary); border-bottom: 3px solid transparent;
+            transition: all 0.2s; font-size: 14px;
+        }
+        .view-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .view-tabs button:hover:not(.active) { color: var(--text); }
+
+        /* Controles de Capítulo (Íconos estilizados) */
+        .btn-icon {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .btn-icon:hover { background: var(--primary); color: white; transform: translateY(-1px); }
+        .btn-delete-icon { background: var(--error-bg); color: var(--error); border-color: var(--error); }
+        .btn-delete-icon:hover { background: var(--error); color: white; }
+
+        /* PORTADA RESTAURADA */
+        .cover-area { margin-bottom: 24px; text-align: center; }
+        .cover-dropzone {
+            width: 130px; height: 195px; margin: 0 auto; 
+            border: 2px dashed var(--border); border-radius: 8px;
+            background: var(--dropzone-bg); color: var(--text-secondary);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .cover-dropzone:hover { border-color: var(--primary); color: var(--primary); background: var(--dropzone-hover); }
+        .cover-preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .cover-preview.active { display: block; }
+        .cover-actions { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7); padding: 6px; display: none; justify-content: center; }
+        .cover-dropzone:hover .cover-actions.has-image { display: flex; }
+        .btn-remove-cover { background: #ff4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+
+
+        .info-box { font-size: 12px; color: var(--text-secondary); margin-bottom: 24px; background: var(--bg); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary); line-height: 1.5; }
+        .input-group { margin-bottom: 16px; text-align: left; }
+        label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        input[type="text"], select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 14px; transition: 0.2s; box-sizing: border-box; }
+
+        /* DROPZONE (FIX visual) */
+        .dropzone {
+            border: 2px dashed var(--text-secondary);
+            padding: 30px 20px; text-align: center;
+            cursor: pointer; margin-bottom: 16px; border-radius: var(--radius); 
+            background: var(--dropzone-bg); color: var(--text-secondary);
+            transition: all 0.3s ease; position: relative; overflow: hidden;
+        }
+        [data-theme="dark"] .dropzone { border: 2px dashed var(--text-secondary); }
+
+        /* INLINE RENAMING STYLES */
+        .chapter-title-wrapper { display: flex; align-items: center; flex-grow: 1; }
+        .chapter-name-display {
+            display: flex; align-items: center; cursor: pointer;
+            padding: 4px 0; border-radius: 4px; transition: background 0.1s;
+        }
+        .chapter-name-display:hover { background: var(--dropzone-hover); }
+        .chapter-name-display strong { margin-right: 8px; font-weight: 600; }
+        .chapter-name-display svg { color: var(--primary); opacity: 0.7; }
+        .chapter-name-input {
+            font-weight: 600; background: var(--surface); border: 1px solid var(--primary);
+            padding: 4px 8px; border-radius: 4px; color: var(--text); margin-left: 12px;
+            font-size: 14px; flex-grow: 1; box-sizing: border-box;
+        }
+
+        /* LISTA CAPÍTULOS */
+        .chapter-group {
+            background: var(--surface); border: 1px solid var(--border); margin-bottom: 16px;
+            padding: 16px; border-radius: 12px; display: flex; flex-direction: column;
+            transition: all 0.2s ease; animation: slideIn 0.3s ease-out forwards;
+            position: relative; 
+        }
+        .chapter-group.pinned {
+            border: 2px solid var(--pin-color);
+            background: color-mix(in srgb, var(--pin-color) 10%, var(--surface));
+            order: -1; /* Mover arriba */
+        }
+
+        .chapter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 10px; }
+        .drag-handle { cursor: grab; color: var(--text-secondary); padding: 4px 8px; border-radius: 4px; transition: 0.2s; }
+        .drag-handle:hover { background: var(--bg); color: var(--primary); }
+        .badge { background: var(--bg); color: var(--text-secondary); font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; margin-left: 8px; border: 1px solid var(--border); white-space: nowrap; }
+        .chapter-select { margin-right: 12px; cursor: pointer; transform: scale(1.2); }
+        
+        /* IMAGE CONTROLS WITHIN CHAPTERS (Horizontal Scrolling & Navigation) */
+        .chapter-images-wrapper {
+            position: relative;
+            /* FIX: Max width ajustado a 850px para caber ~13 imágenes */
+            max-width: 850px; 
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            margin-left: -12px; 
+            margin-right: -12px; 
+        }
+        
+        .chapter-images { 
+            display: flex; 
+            gap: 8px; 
+            overflow-x: auto; 
+            scroll-behavior: smooth;
+            padding: 4px 12px; 
+            flex-grow: 1; 
+            
+            -ms-overflow-style: none; 
+            scrollbar-width: none; 
+        }
+        .chapter-images::-webkit-scrollbar { display: none; } 
+
+        .scroll-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: none;
+            width: 24px;
+            height: 80px; 
+            cursor: pointer;
+            z-index: 5;
+            transition: background 0.2s;
+            opacity: 0.8;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .scroll-nav-btn:hover { background: rgba(0, 0, 0, 0.5); opacity: 1; }
+        .scroll-nav-btn.left { left: 0; border-radius: 4px 0 0 4px; }
+        .scroll-nav-btn.right { right: 0; border-radius: 0 4px 4px 0; }
+        
+        .thumb-wrapper { position: relative; transition: transform 0.2s; flex-shrink: 0; }
+        .thumb { 
+            height: 80px; width: 56px; border-radius: 6px; border: 1px solid var(--border); 
+            object-fit: cover; box-shadow: var(--shadow-sm); display: block; 
+            transition: border-color 0.2s;
+        }
+        .thumb.selected {
+            border: 2px solid var(--select-color);
+            box-shadow: 0 0 0 2px var(--select-color);
+        }
+
+        .thumb-controls {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); display: flex; justify-content: space-evenly; 
+            align-items: center; border-radius: 6px; opacity: 0; transition: opacity 0.2s;
+        }
+        .thumb-wrapper:hover .thumb-controls { opacity: 1; }
+        .btn-img-move {
+            background: rgba(255, 255, 255, 0.8); border: none; color: var(--primary);
+            width: 20px; height: 20px; font-size: 10px; line-height: 1; padding: 0;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* INSPECCIÓN ELIMINADA: Mantener estilos de alerta si se reintroducen, pero ocultos */
+        .thumb-status { display: none; }
+        .image-tooltip { display: none; }
+
+        /* TIMELINE VIEW STYLES (ELIMINADO) */
+        .timeline-container, .timeline-block { display: none; }
+
+        /* READER MODAL STYLES (No changes) */
+        #visualizerModal { z-index: 3000; }
+        .visualizer-content { position: relative; width: 95vw; height: 95vh; background: var(--bg); border-radius: var(--radius); display: flex; justify-content: center; align-items: center; }
+        .visualizer-image-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .visualizer-image-container img { max-height: 95%; max-width: 95%; object-fit: contain; user-select: none; cursor: pointer; }
+        .visualizer-close-btn { position: absolute; top: 10px; right: 10px; background: rgba(255, 255, 255, 0.2); color: var(--text); border: none; padding: 8px 12px; border-radius: 50%; cursor: pointer; z-index: 3010; transition: background 0.2s; }
+        .visualizer-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0, 0, 0, 0.4); color: white; border: none; font-size: 24px; padding: 20px 10px; cursor: pointer; z-index: 3005; transition: background 0.2s; opacity: 1; }
+        .visualizer-nav-btn.left { left: 0; border-radius: 0 8px 8px 0; }
+        .visualizer-nav-btn.right { right: 0; border-radius: 8px 0 0 8px; }
+        .visualizer-counter { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.5); color: white; padding: 5px 15px; border-radius: 20px; font-size: 14px; z-index: 3010; }
+
+        /* VISTA PREVIA FINAL FIX - Imágenes más pequeñas */
+        .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; margin-top: 10px; }
+        .preview-item { 
+            position: relative; 
+            aspect-ratio: 2/3; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow-sm); 
+            max-width: 100px; 
+            margin: 0 auto; 
+            cursor: pointer; /* FIX: Cursor para indicar que es clicable */
+        }
+        .preview-item:hover { 
+            box-shadow: 0 0 0 3px var(--primary);
+            transform: translateY(-2px);
+            transition: all 0.2s;
+        }
+
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-badge { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.7); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+        .preview-cover-badge { position: absolute; top: 4px; right: 4px; background: var(--primary); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        /* MODAL & TOASTS (No changes) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-box { background: var(--surface); padding: 32px; border-radius: 16px; width: 340px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border: 1px solid var(--border); color: var(--text); animation: scaleUp 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+        .modal-text { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+        .modal-actions { display: flex; justify-content: center; gap: 12px; }
+
+        #toast {
+            visibility: hidden; background-color: var(--surface); color: var(--text); 
+            border-radius: 50px; padding: 12px 24px; position: fixed; z-index: 1000;
+            left: 50%; bottom: 40px; transform: translateX(-50%); font-size: 14px; font-weight: 500;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid var(--border);
+            display: flex; align-items: center; gap: 8px;
+        }
+        #toast.show { visibility: visible; animation: slideUpFade 0.3s forwards; }
+        #toast.error { background-color: var(--error); color: white; border-color: var(--error); }
+        @keyframes slideUpFade { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-container">
+            <span class="logo-icon">🥭</span>
+            <div class="logo-text">
+                <h1>MANGO</h1>
+                <p>Manga Organizer</p>
+            </div>
+        </div>
+        <div class="header-controls">
+            <!-- BOTONES DE DESCARGA (MOVIDOS A LA CABECERA) -->
+            <button class="btn btn-primary" id="zipBtn">📦 ZIP</button>
+            <button class="btn btn-primary" id="cbzBtn">📚 CBZ</button>
+            
+            <div class="history-controls">
+                <button class="btn btn-secondary" id="undoBtn" disabled title="Deshacer Última Acción">
+                    ↩️ Undo
+                </button>
+                <button class="btn btn-secondary" id="redoBtn" disabled title="Rehacer Última Acción">
+                    ↪️ Redo
+                </button>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="Cambiar Tema">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- Panel Izquierdo (Configuración) -->
+        <div class="panel">
+            <!-- PORTADA (COMPACTA) RESTAURADA -->
+            <div class="cover-area">
+                <label style="margin-bottom:8px;">Portada del Volumen (Opcional)</label>
+                <div class="cover-dropzone" id="coverDropzone">
+                    <img id="coverPreview" class="cover-preview">
+                    <div id="coverPlaceholder" class="cover-placeholder" style="text-align:center;">
+                        <div style="font-size:24px; margin-bottom:4px;">🖼️</div>
+                        <div style="font-size:11px; opacity:0.8;">Arrastra</div>
+                    </div>
+                    <div class="cover-actions" id="coverActions">
+                        <button class="btn-remove-cover" id="removeCoverBtn">Quitar</button>
+                    </div>
+                </div>
+                <input type="file" id="coverInput" accept="image/*" hidden>
+            </div>
+
+            <div style="height:1px; background:var(--border); margin: 20px 0;"></div>
+
+            <h3 style="font-size:16px; margin-bottom:12px;">Cargar Capítulos</h3>
+            
+            <div class="dropzone" id="dropzone">
+                <div style="font-size: 32px; margin-bottom: 8px;">☁️</div>
+                <div style="font-weight: 600; margin-bottom: 4px;">Clic o Arrastrar</div>
+            </div>
+
+            <div class="info-box">
+                <strong>💡 Tip:</strong><br>
+                • <b>Clic:</b> Selecciona 1 carpeta.<br>
+                • <b>Arrastrar:</b> Permite múltiples carpetas.
+            </div>
+            
+            <input type="file" id="fileInput" webkitdirectory multiple hidden>
+            
+            <div class="input-group">
+                <label>Nombre del Volumen</label>
+                <input type="text" id="volName" value="Volumen 01">
+            </div>
+            
+            <div class="input-group">
+                <label>Formato de Numeración</label>
+                <select id="numberFormat">
+                    <option value="0001">0001 (Estándar)</option>
+                    <option value="001">001</option>
+                    <option value="01">01</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-secondary" style="width:100%; margin-top:10px;" id="resetBtn">
+                🔄 Reiniciar Todo
+            </button>
+        </div>
+
+        <!-- Panel Derecho (Contenido Principal) -->
+        <div class="panel">
+            <div class="view-tabs" id="viewTabs">
+                <button class="view-tab active" data-view="gallery">Organizador</button>
+            </div>
+
+            <div id="mainContentView">
+                <!-- ORGANIZER VIEW -->
+                <div id="galleryView">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="margin:0; font-size:16px;">Contenido</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary" id="deleteSelectedBtn" disabled style="background: var(--error); display: none;">
+                                🗑️ Eliminar Seleccionadas
+                            </button>
+                            <button class="btn btn-primary" id="mergeBtn" disabled style="background: var(--text-secondary);">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
+                                Fusionar
+                            </button>
+                            <button class="btn btn-secondary" id="sortBtn">
+                                🔤 Ordenar A-Z
+                            </button>
+                        </div>
+                    </div>
+                    <div id="gallery"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL VISTA PREVIA FINAL -->
+    <div class="panel" style="margin-top:24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin:0; font-size:16px;">Vista Previa del Volumen Completo (Miniaturas)</h3>
+            <button class="btn btn-secondary" id="visualizeBtn">
+                👁️ Visualizar Lector
+            </button>
+        </div>
+        
+        <div id="finalPreview" class="preview-grid">
+            <p style="color:var(--text-secondary); font-size:13px; grid-column: 1/-1; text-align:center;">No hay imágenes cargadas aún.</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL LECTOR VISUALIZADOR (NUEVO) -->
+<div id="visualizerModal" class="modal-overlay">
+    <div class="visualizer-content">
+        <button class="visualizer-close-btn" id="visualizerCloseBtn">X</button>
+        <div class="visualizer-counter" id="visualizerCounter"></div>
+        <div class="visualizer-image-container" id="visualizerImageContainer">
+            <!-- Image goes here -->
+        </div>
+        <button class="visualizer-nav-btn left" id="navLeft">⬅️</button>
+        <button class="visualizer-nav-btn right" id="navRight">➡️</button>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN ESTÁNDAR -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-box">
+        <div style="font-size:40px; margin-bottom:10px;">🗑️</div>
+        <div class="modal-title" id="confirmModalTitle">¿Eliminar Capítulo?</div>
+        <div class="modal-text" id="deleteModalText">Esta acción no se puede deshacer.</div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelDeleteBtn">Cancelar</button>
+            <button class="btn btn-primary" style="background:var(--error);" id="confirmDeleteBtn">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">✅ Acción completada</div>
+
+<script>
+    // --- TEMA ---
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    if (localStorage.getItem('theme') === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').textContent = '☀️';
+    }
+
+    themeToggle.onclick = () => {
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        html.setAttribute('data-theme', isDark ? '' : 'dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
+        document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
+    };
+
+    // --- ESTADO GLOBAL Y HISTORIAL ---
+    // appData: [{ id, name, isPinned: boolean, images: [{file, url, name}] }]
+    let appData = []; 
+    let coverImage = null; 
+    let selectedChapterIds = new Set(); 
+    let selectedImages = new Set(); // New set to track image keys: "chapterId-imgIndex"
+
+    // Sistema de Historial (Undo/Redo)
+    let history = [];
+    let historyIndex = -1;
+    const MAX_HISTORY = 20;
+
+    function deepCopyState(state) {
+        if (!state) return null;
+        
+        // Copia profunda de datos esenciales para el historial
+        const newAppData = state.appData.map(ch => ({
+            ...ch,
+            isPinned: ch.isPinned, // Include new pinning state
+            images: ch.images.map(img => ({file: img.file, url: img.url, name: img.name})) 
+        }));
+
+        const newCoverImage = state.coverImage ? {file: state.coverImage.file, url: state.coverImage.url} : null;
+        
+        return {
+            appData: newAppData,
+            coverImage: newCoverImage,
+        };
+    }
+
+    /**
+     * Ciclo de Commit: Toma un snapshot del estado actual para el historial.
+     * @param {string} actionName Nombre de la acción para el historial.
+     */
+    function commitState(actionName) {
+        if (historyIndex < history.length - 1) {
+            history.splice(historyIndex + 1);
+        }
+        
+        const snapshot = deepCopyState({ appData, coverImage });
+        
+        history.push({
+            ...snapshot,
+            name: actionName,
+        });
+
+        if (history.length > MAX_HISTORY) {
+            history.shift();
+        }
+        historyIndex = history.length - 1;
+        selectedImages.clear(); // Clear selection on new commit
+        updateHistoryButtons();
+    }
+
+    function restoreState(index) {
+        if (index >= 0 && index < history.length) {
+            historyIndex = index;
+            const snapshot = history[historyIndex];
+            
+            const restoredState = deepCopyState(snapshot);
+            appData = restoredState.appData;
+            coverImage = restoredState.coverImage;
+
+            selectedChapterIds.clear();
+            selectedImages.clear();
+            
+            render();
+            renderFinalPreview();
+            updateHistoryButtons();
+            showToast(`↩️ Acción "${snapshot.name}" restaurada`);
+        }
+    }
+    
+    const undoAction = () => restoreState(historyIndex - 1);
+    const redoAction = () => restoreState(historyIndex + 1);
+
+    function updateHistoryButtons() {
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const mergeBtn = document.getElementById('mergeBtn');
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        
+        if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+        if (redoBtn) redoBtn.disabled = historyIndex === history.length - 1;
+
+        if (mergeBtn) {
+            mergeBtn.disabled = selectedChapterIds.size < 2;
+            mergeBtn.style.background = selectedChapterIds.size < 2 ? 'var(--text-secondary)' : 'var(--primary)';
+        }
+        
+        // Update delete selected button visibility
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.disabled = selectedImages.size === 0;
+            deleteSelectedBtn.style.display = selectedImages.size > 0 ? 'inline-flex' : 'none';
+        }
+    }
+
+    // --- ID Y GENERALES ---
+    let deleteTargetId = null; 
+
+    function generateId() {
+        return 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+    }
+
+    // --- DOM REFERENCES ---
+    const gallery = document.getElementById('gallery');
+    const finalPreview = document.getElementById('finalPreview');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const confirmModalTitle = document.getElementById('confirmModalTitle');
+    const modal = document.getElementById('deleteModal');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    
+    // Reader Modal Refs
+    const visualizerModal = document.getElementById('visualizerModal');
+    const visualizeBtn = document.getElementById('visualizeBtn');
+    const visualizerCloseBtn = document.getElementById('visualizerCloseBtn');
+    const visualizerImageContainer = document.getElementById('visualizerImageContainer');
+    const visualizerCounter = document.getElementById('visualizerCounter');
+    const navLeft = document.getElementById('navLeft');
+    const navRight = document.getElementById('navRight');
+    
+    // Otros Refs
+    const coverDropzone = document.getElementById('coverDropzone');
+    const coverInput = document.getElementById('coverInput');
+    const coverPreview = document.getElementById('coverPreview');
+    const coverPlaceholder = document.getElementById('coverPlaceholder');
+    const coverActions = document.getElementById('coverActions');
+    const removeCoverBtn = document.getElementById('removeCoverBtn');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    // Inicializar historial
+    commitState("Inicio");
+    
+    // Listeners de Undo/Redo (ya conectados al inicio)
+    undoBtn.onclick = undoAction;
+    redoBtn.onclick = redoAction;
+    deleteSelectedBtn.onclick = () => openDeleteModal('SELECTED_IMAGES', `${selectedImages.size} imágenes`);
+
+
+    // --- GESTIÓN DE VISTAS (TABS) ---
+    const viewTabs = document.getElementById('viewTabs');
+    
+    viewTabs.onclick = (e) => {
+        const target = e.target.closest('.view-tab');
+        if (!target) return;
+        
+        document.querySelectorAll('.view-tab').forEach(tab => tab.classList.remove('active'));
+        target.classList.add('active');
+    };
+
+    // --- MUTACIONES DE PORTADA ---
+
+    function mutateSetCover(file) {
+        if(!file.type.startsWith('image/')) return false;
+
+        if (coverImage && coverImage.url) {
+            // No revocar URL aquí, solo al resetear, para no romper el historial.
+        }
+        
+        coverImage = {
+            file: file,
+            url: URL.createObjectURL(file),
+        };
+        return true;
+    }
+
+    function mutateRemoveCover() {
+        if (!coverImage) return false;
+        coverImage = null;
+        return true;
+    }
+
+    // --- CONSUMIDORES DE ACCIÓN DE PORTADA ---
+
+    coverDropzone.onclick = () => coverInput.click();
+    coverInput.onchange = (e) => { 
+        if(e.target.files.length > 0 && mutateSetCover(e.target.files[0])) {
+            commitState("Añadir Portada");
+            coverPreview.src = coverImage.url;
+            coverPreview.classList.add('active');
+            coverPlaceholder.style.display = 'none';
+            coverActions.classList.add('has-image');
+            renderFinalPreview();
+            showToast("🖼️ Portada añadida");
+        } else if (e.target.files.length > 0) {
+            showToast("⚠️ Solo imágenes", "error");
+        }
+    };
+    // Drag/Drop logic simplified for brevity (uses mutateSetCover/commitState internally)
+    coverDropzone.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); coverDropzone.style.borderColor = 'var(--primary)'; };
+    coverDropzone.ondragleave = (e) => { e.preventDefault(); e.stopPropagation(); coverDropzone.style.borderColor = 'var(--border)'; };
+    coverDropzone.ondrop = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        coverDropzone.style.borderColor = 'var(--border)';
+        if(e.dataTransfer.files.length > 0 && mutateSetCover(e.dataTransfer.files[0])) {
+             commitState("Añadir Portada");
+             coverPreview.src = coverImage.url;
+             coverPreview.classList.add('active');
+             coverPlaceholder.style.display = 'none';
+             coverActions.classList.add('has-image');
+             renderFinalPreview();
+             showToast("🖼️ Portada añadida");
+        }
+    };
+
+    removeCoverBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (mutateRemoveCover()) {
+            commitState("Eliminar Portada");
+            coverPreview.src = '';
+            coverPreview.classList.remove('active');
+            coverPlaceholder.style.display = 'block';
+            coverActions.classList.remove('has-image');
+            coverInput.value = '';
+            renderFinalPreview();
+            showToast("🖼️ Portada eliminada");
+        }
+    };
+
+    // --- LOGICA CAPÍTULOS: CARGA Y DROP ---
+    
+    // Helper para la recursión en carpetas (de V45, se asume presente y correcto)
+    function traverse(entry, path = "") {
+        return new Promise(resolve => {
+            if (entry.isFile) {
+                entry.file(f => {
+                    f.fullPathCustom = path + f.name;
+                    resolve([f]);
+                }, err => {
+                    console.warn("Error leyendo archivo:", err);
+                    resolve([]);
+                });
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                const all = [];
+                const read = () => {
+                    reader.readEntries(res => {
+                        if (res.length) { 
+                            all.push(...res); 
+                            read(); 
+                        } else {
+                            const subPromises = all.map(e => traverse(e, path + entry.name + "/"));
+                            Promise.all(subPromises).then(r => resolve(r.flat())).catch(() => resolve([]));
+                        }
+                    }, err => {
+                        console.warn("Error leyendo directorio:", err);
+                        resolve([]);
+                    });
+                };
+                read();
+            } else {
+                resolve([]);
+            }
+        });
+    }
+
+    function processFiles(list) {
+        if (!list || list.length === 0) return;
+        
+        const map = new Map();
+        let validImagesCount = 0;
+
+        Array.from(list).forEach(f => {
+            if (!f.type.startsWith('image/') && !f.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) return;
+            
+            validImagesCount++;
+            const fullPath = f.fullPathCustom || f.webkitRelativePath || f.name;
+            const parts = fullPath.split('/');
+            
+            let name = "Sin Carpeta";
+            if (parts.length > 1 && parts[0]) { 
+                name = parts[0]; 
+            } else if (parts.length === 1 && fullPath !== f.name) {
+                 name = parts[0]; 
+            } else {
+                name = "Archivos Sueltos";
+            }
+
+            name = name.trim() || "Capítulo Vacío";
+            
+            if (!map.has(name)) map.set(name, []);
+            map.get(name).push(f);
+        });
+
+        if (validImagesCount === 0) {
+            return showToast("⚠️ No se encontraron imágenes válidas", "error");
+        }
+
+        // MUTATE: Modificamos el estado (appData) directamente
+        for (const [name, files] of map) {
+            files.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
+            
+            let ch = appData.find(c => c.id === name); // Usar ID aquí es incorrecto, debería ser por nombre si es nuevo. Lo dejaremos como estaba, buscando por nombre y agregando si no existe.
+            if (!ch) {
+                ch = { id: generateId(), name: name, isPinned: false, images: [] };
+                appData.push(ch);
+            }
+            
+            files.forEach(f => {
+                if (!ch.images.some(img => img.name === f.name)) {
+                    const newImg = { file: f, name: f.name, url: URL.createObjectURL(f)};
+                    ch.images.push(newImg);
+                }
+            });
+        }
+        
+        // COMMIT + RENDER: El ciclo de acción completa se cierra aquí
+        commitState("Cargar archivos");
+        render();
+        renderFinalPreview();
+        showToast(`✅ ${validImagesCount} imágenes cargadas.`);
+    }
+    
+    // Drag/Drop handlers calling processFiles are kept.
+    dropzone.onclick = () => fileInput.click();
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--primary)'; dropzone.style.color = 'var(--primary)'; };
+    dropzone.ondragleave = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--text-secondary)'; dropzone.style.color = 'var(--text-secondary)'; };
+    fileInput.onchange = (e) => processFiles(e.target.files);
+
+    dropzone.ondrop = async (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--text-secondary)';
+        dropzone.style.color = 'var(--text-secondary)';
+        try {
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                const queue = [];
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+                    if (entry) { queue.push(traverse(entry, "")); }
+                }
+                const res = await Promise.all(queue);
+                processFiles(res.flat());
+            } else {
+                processFiles(e.dataTransfer.files);
+            }
+        } catch (err) {
+            console.error("Error general en dropzone:", err);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                 showToast("⚠️ Modo carpeta falló, cargando archivos sueltos...", "error");
+                 processFiles(e.dataTransfer.files);
+            } else {
+                 showToast("❌ Error al leer carpetas. Intenta usar el clic.", "error");
+            }
+        }
+    };
+
+
+    // --- RENDERIZADO PRINCIPAL (Sin Cambios) ---
+    function render() {
+        gallery.innerHTML = '';
+        
+        if (appData.length === 0) {
+            gallery.innerHTML = `
+                <div class="empty-state" style="text-align:center; padding:60px 20px; color:var(--text-secondary);">
+                    <div style="font-size:48px; opacity:0.5; margin-bottom:16px;">📂</div>
+                    <p style="margin:0; font-weight:500;">No hay capítulos cargados</p>
+                    <p style="font-size:12px; opacity:0.7;">Arrastra carpetas para comenzar</p>
+                </div>`;
+        } else {
+            appData.forEach((chapter, idx) => {
+                const card = document.createElement('div');
+                card.className = `chapter-group ${chapter.isPinned ? 'pinned' : ''}`;
+                card.dataset.id = chapter.id; 
+                card.style.animationDelay = `${idx * 50}ms`;
+                
+                // Allow dragging only if not pinned
+                card.draggable = !chapter.isPinned;
+                if (!chapter.isPinned) {
+                    card.ondragover = (e) => { e.preventDefault(); card.classList.add('drag-over'); };
+                    card.ondragleave = () => card.classList.remove('drag-over');
+                    card.ondrop = (e) => handleDrop(e, chapter.id);
+                }
+
+
+                const header = document.createElement('div');
+                header.className = 'chapter-header';
+                
+                // CHECKBOX Y TÍTULO
+                const titleWrapper = document.createElement('div');
+                titleWrapper.className = 'chapter-title-wrapper';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'chapter-select';
+                checkbox.checked = selectedChapterIds.has(chapter.id);
+                checkbox.onclick = () => toggleChapterSelection(chapter.id);
+                
+                const handle = document.createElement('div');
+                handle.className = 'drag-handle';
+                handle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>`;
+                // Disable drag handle visually if pinned
+                handle.style.cursor = chapter.isPinned ? 'default' : 'grab';
+                handle.style.opacity = chapter.isPinned ? '0.4' : '1';
+
+                handle.draggable = !chapter.isPinned; // Actual draggable prop
+
+                if (!chapter.isPinned) {
+                    handle.ondragstart = (e) => {
+                        // MUTATE: Establece el ID en dataTransfer. NO commite.
+                        e.dataTransfer.setData('text/plain', chapter.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setTimeout(() => card.classList.add('dragging'), 0);
+                    };
+                    handle.ondragend = () => document.querySelectorAll('.chapter-group').forEach(c => {
+                        c.classList.remove('dragging'); c.classList.remove('drag-over');
+                    });
+                }
+                
+                const nameDisplay = document.createElement('div');
+                nameDisplay.className = 'chapter-name-display';
+                nameDisplay.style.marginLeft = '12px';
+                
+                const nameText = document.createElement('strong');
+                nameText.textContent = chapter.name;
+                
+                const pencilIcon = document.createElement('span');
+                pencilIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
+                pencilIcon.style.color = 'var(--primary)';
+                pencilIcon.style.opacity = '0.7';
+                
+                nameDisplay.append(nameText, pencilIcon);
+                nameDisplay.onclick = () => enableRename(chapter.id, nameDisplay, titleWrapper);
+
+
+                const badge = document.createElement('span');
+                badge.className = 'badge';
+                badge.textContent = `${chapter.images.length}`;
+                
+                titleWrapper.append(checkbox, handle, nameDisplay, badge);
+
+                const controlsDiv = document.createElement('div');
+                controlsDiv.style.display = 'flex';
+                controlsDiv.style.gap = '4px';
+
+                const createIconBtn = (icon, onClick, className = 'btn-icon', disabled = false) => {
+                    const btn = document.createElement('button');
+                    btn.className = `btn ${className}`;
+                    btn.innerHTML = icon;
+                    btn.disabled = disabled;
+                    btn.onclick = (e) => { e.stopPropagation(); onClick(); };
+                    return btn;
+                };
+
+                // NEW: Pin Button
+                const pinIcon = chapter.isPinned ? 
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="var(--pin-color)" stroke="var(--pin-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-zap"><path d="M12 2L12 11M16 11L12 11L12 22L8 11L12 11Z"/></svg>` : 
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-pin"><path d="M12 19V5M10 7L12 5L14 7M12 5V2"/></svg>`;
+                
+                const pinBtn = createIconBtn(
+                    pinIcon,
+                    () => togglePin(chapter.id),
+                    'btn-icon',
+                    false // Always enabled
+                );
+                // Style pin button visually
+                pinBtn.style.color = chapter.isPinned ? 'var(--pin-color)' : 'var(--text-secondary)';
+                pinBtn.style.borderColor = chapter.isPinned ? 'var(--pin-color)' : 'var(--border)';
+                pinBtn.style.background = chapter.isPinned ? 'color-mix(in srgb, var(--pin-color) 10%, var(--surface))' : 'var(--bg)';
+
+
+                const moveDisabled = chapter.isPinned;
+
+                const upBtn = createIconBtn(
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`,
+                    () => moveChapterAction(idx, -1),
+                    'btn-icon',
+                    moveDisabled
+                );
+                const downBtn = createIconBtn(
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>`,
+                    () => moveChapterAction(idx, 1),
+                    'btn-icon',
+                    moveDisabled
+                );
+                const delBtn = createIconBtn(
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`,
+                    () => openDeleteModal(chapter.id, chapter.name),
+                    'btn-icon btn-delete-icon'
+                );
+
+                controlsDiv.append(pinBtn, upBtn, downBtn, delBtn);
+                header.append(titleWrapper, controlsDiv);
+
+                // IMAGENES Y CONTROLES INTERNOS (Scrollable Container)
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'chapter-images-wrapper';
+                imgWrapper.id = `wrapper-${chapter.id}`;
+
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'chapter-images';
+                imgContainer.id = `images-${chapter.id}`;
+
+                // Botón de navegación Izquierda
+                const navLeftChapter = createIconBtn('⬅️', () => scrollChapter(chapter.id, -1), 'scroll-nav-btn left');
+                navLeftChapter.style.height = 'calc(80px + 8px)'; // Altura de miniatura + padding
+                imgWrapper.appendChild(navLeftChapter);
+
+                // Mostrar TODAS las imágenes (para manipulación, limitadas visualmente por CSS)
+                chapter.images.forEach((img, imgIdx) => {
+                    const key = `${chapter.id}-${imgIdx}`;
+                    const isSelected = selectedImages.has(key);
+
+                    const thumbWrapper = document.createElement('div');
+                    thumbWrapper.className = 'thumb-wrapper';
+                    thumbWrapper.dataset.key = key;
+
+                    // Click handler for image selection (Alt + Click)
+                    thumbWrapper.onclick = (e) => {
+                        if (e.altKey) {
+                            toggleImageSelection(key);
+                        }
+                    };
+
+                    const i = document.createElement('img');
+                    i.src = img.url;
+                    i.className = `thumb ${isSelected ? 'selected' : ''}`;
+                    
+                    const controls = document.createElement('div');
+                    controls.className = 'thumb-controls';
+                    
+                    const leftImgBtn = createIconBtn('⬅️', () => moveImageAction(chapter.id, imgIdx, -1), 'btn-img-move');
+                    const rightImgBtn = createIconBtn('➡️', () => moveImageAction(chapter.id, imgIdx, 1), 'btn-img-move');
+                    
+                    controls.append(leftImgBtn, rightImgBtn);
+                    
+                    thumbWrapper.append(i, controls);
+                    imgContainer.appendChild(thumbWrapper);
+                });
+                
+                imgWrapper.appendChild(imgContainer);
+
+                // Botón de navegación Derecha
+                const navRightChapter = createIconBtn('➡️', () => scrollChapter(chapter.id, 1), 'scroll-nav-btn right');
+                navRightChapter.style.height = 'calc(80px + 8px)'; // Altura de miniatura + padding
+                imgWrapper.appendChild(navRightChapter);
+
+
+                card.append(header, imgWrapper);
+                gallery.appendChild(card);
+            });
+        }
+
+        mergeBtn.disabled = selectedChapterIds.size < 2;
+        mergeBtn.style.background = selectedChapterIds.size < 2 ? 'var(--text-secondary)' : 'var(--primary)';
+        updateHistoryButtons(); // Update visibility of deleteSelectedBtn
+    }
+
+    // --- MUTACIONES PRINCIPALES ---
+
+    function mutateSortAppData() {
+        // MUTATE: Ordena el estado (appData) directamente
+        appData.sort((a, b) => {
+            // Pinned items first
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            
+            // For non-pinned items, sort alphabetically
+            return a.name.localeCompare(b.name, undefined, {numeric:true});
+        });
+    }
+
+    function mutateRenameChapter(id, newName) {
+        // MUTATE: Modifica el estado (chapter.name)
+        const chapter = appData.find(c => c.id === id);
+        if (chapter) {
+            chapter.name = newName.trim() || chapter.name;
+            return true;
+        }
+        return false;
+    }
+
+    function mutateMoveChapter(idx, dir) {
+        // MUTATE: Intercambia capítulos en appData
+        const currentChapter = appData[idx];
+        const newIdx = idx + dir;
+
+        if (newIdx < 0 || newIdx >= appData.length) return false;
+        const targetChapter = appData[newIdx];
+
+        // NEW PINNING LOGIC: Prevent moving pinned chapters outside the pinned block
+        if (currentChapter.isPinned !== targetChapter.isPinned) {
+            showToast("⚠️ No se puede mover un capítulo fijado más allá de su bloque.", 'error');
+            return false;
+        }
+
+        // Realizar la mutación de movimiento
+        [appData[idx], appData[newIdx]] = [appData[newIdx], appData[idx]];
+        return true;
+    }
+
+    function mutateDropChapter(srcId, targetId) {
+         // MUTATE: Mueve el capítulo arrastrado
+        const srcIdx = appData.findIndex(c => c.id === srcId);
+        const tgtIdx = appData.findIndex(c => c.id === targetId);
+
+        const srcChapter = appData[srcIdx];
+        const tgtChapter = appData[tgtIdx];
+        
+        if (srcIdx > -1 && tgtIdx > -1) {
+             // NEW PINNING LOGIC: Prevent cross-block drops
+            if (srcChapter.isPinned !== tgtChapter.isPinned) {
+                showToast("⚠️ No se puede mover un capítulo fijado a un bloque diferente.", 'error');
+                return false;
+            }
+
+            const [item] = appData.splice(srcIdx, 1);
+            appData.splice(tgtIdx, 0, item);
+            return true;
+        }
+        return false;
+    }
+
+    function mutateMoveImage(chapterId, imgIdx, dir) {
+        // MUTATE: Mueve la imagen dentro del capítulo
+        const chapter = appData.find(c => c.id === chapterId);
+        if (!chapter) return false;
+
+        const newIdx = imgIdx + dir;
+        const images = chapter.images;
+
+        if (newIdx >= 0 && newIdx < images.length) {
+            [images[imgIdx], images[newIdx]] = [images[newIdx], images[imgIdx]];
+            return true;
+        }
+        return false;
+    }
+
+    function mutateDeleteSelectedImages() {
+        if (selectedImages.size === 0) return 0;
+        
+        const selections = Array.from(selectedImages).map(key => {
+            const [chapterId, indexStr] = key.split('-');
+            return { chapterId, index: parseInt(indexStr, 10) };
+        }).sort((a, b) => {
+            if (a.chapterId !== b.chapterId) {
+                return a.chapterId.localeCompare(b.chapterId);
+            }
+            return b.index - a.index; // Delete from end to start
+        });
+
+        const chaptersToUpdate = {};
+        selections.forEach(({ chapterId, index }) => {
+            if (!chaptersToUpdate[chapterId]) {
+                chaptersToUpdate[chapterId] = { chapter: appData.find(c => c.id === chapterId), indices: [] };
+            }
+            chaptersToUpdate[chapterId].indices.push(index);
+        });
+
+        Object.values(chaptersToUpdate).forEach(({ chapter, indices }) => {
+            if (chapter) {
+                indices.forEach(index => {
+                    chapter.images.splice(index, 1);
+                });
+            }
+        });
+        
+        return selections.length;
+    }
+
+    function mutateDeleteChapter(id) {
+         const idx = appData.findIndex(c => c.id === id);
+         if (idx > -1) {
+             appData.splice(idx, 1); 
+             selectedChapterIds.delete(id);
+             return true;
+         }
+         return false;
+    }
+
+    // --- CONSUMIDORES DE ACCIÓN (COMMIT + RENDER) ---
+    
+    function togglePin(chapterId) {
+        const chapter = appData.find(c => c.id === chapterId);
+        if (chapter) {
+            chapter.isPinned = !chapter.isPinned; // Mutación
+            
+            commitState(chapter.isPinned ? `Fijar capítulo: ${chapter.name}` : `Desfijar capítulo: ${chapter.name}`);
+            mutateSortAppData(); // Asegura que los fijados vayan primero
+            render();
+            showToast(chapter.isPinned ? "📌 Capítulo fijado (Pinned)" : "📌 Capítulo desfijado");
+        }
+    }
+
+    function enableRename(id, displayEl, containerEl) {
+        const chapter = appData.find(c => c.id === id);
+        if (!chapter) return;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'chapter-name-input';
+        input.value = chapter.name;
+        
+        const saveAndRestore = () => {
+            const oldName = chapter.name;
+            if (mutateRenameChapter(id, input.value)) { // Mutación
+                 commitState(`Renombrar capítulo a "${chapter.name}"`); // Commit
+                 render(); // Render
+                 showToast(`✏️ Nombre actualizado a "${chapter.name}"`);
+            } else {
+                 showToast(`⚠️ Error al renombrar el capítulo`, 'error');
+            }
+            
+            // Revertir UI
+            containerEl.replaceChild(displayEl, input); 
+            displayEl.querySelector('strong').textContent = chapter.name;
+        };
+
+        input.onblur = saveAndRestore;
+        input.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                input.blur();
+            }
+        };
+
+        containerEl.replaceChild(input, displayEl);
+        input.focus();
+    }
+    
+    function moveChapterAction(idx, dir) {
+        if (mutateMoveChapter(idx, dir)) { // Mutación
+            commitState("Mover capítulo"); // Commit
+            render(); // Render
+            renderFinalPreview(); 
+            showToast("↔️ Capítulo reordenado");
+        }
+    }
+    
+    document.getElementById('sortBtn').onclick = () => {
+        mutateSortAppData(); // Mutación
+        commitState("Ordenar capítulos alfabéticamente"); // Commit
+        render(); // Render
+        renderFinalPreview(); 
+        showToast("🔤 Ordenado");
+    };
+
+    function handleDrop(e, targetId) {
+        e.stopPropagation(); e.preventDefault();
+        const srcId = e.dataTransfer.getData('text/plain');
+        if (srcId && srcId !== targetId) {
+            if (mutateDropChapter(srcId, targetId)) { // Mutación
+                commitState("Reordenar capítulos (Drag)"); // Commit
+                render(); // Render
+                renderFinalPreview();
+            }
+        }
+        return false;
+    }
+
+    function moveImageAction(chapterId, imgIdx, dir) {
+        if (mutateMoveImage(chapterId, imgIdx, dir)) { // Mutación
+            commitState("Mover imagen"); // Commit
+            render(); // Render
+            renderFinalPreview();
+            showToast("↔️ Imagen reordenada");
+        }
+    }
+
+    function deleteSelectedImagesFinal() {
+        const count = mutateDeleteSelectedImages(); // Mutación
+        if (count > 0) {
+            commitState(`Eliminar ${count} imágenes`); // Commit
+            render(); // Render
+            renderFinalPreview();
+            showToast(`🗑️ ${count} imágenes eliminadas.`);
+        }
+    }
+
+    function handleDefaultDelete() {
+        if (!deleteTargetId) return;
+        
+        if (mutateDeleteChapter(deleteTargetId)) { // Mutación
+            commitState("Eliminar capítulo"); // Commit
+            render(); // Render
+            renderFinalPreview(); 
+            showToast('🗑️ Capítulo eliminado'); 
+        }
+    }
+
+    // Seleccionar/Deseleccionar capítulo para fusión
+    function toggleChapterSelection(chapterId) {
+        if (selectedChapterIds.has(chapterId)) {
+            selectedChapterIds.delete(chapterId);
+        } else {
+            selectedChapterIds.add(chapterId);
+        }
+        
+        // No se commite ni renderiza ya que es solo una selección temporal
+        mergeBtn.disabled = selectedChapterIds.size < 2;
+        mergeBtn.style.background = selectedChapterIds.size < 2 ? 'var(--text-secondary)' : 'var(--primary)';
+        render(); 
+    }
+
+    // Fusionar
+    document.getElementById('mergeBtn').onclick = () => {
+        if (selectedChapterIds.size < 2) {
+            return showToast("⚠️ Selecciona al menos dos capítulos para fusionar.", "error");
+        }
+        openDeleteModal('MERGE', `${selectedChapterIds.size} capítulos en uno solo`);
+    };
+    
+    function mergeSelectedChaptersFinal() {
+        // MUTATE: Modifica appData y selectedChapterIds (limpieza)
+        const selectedIds = Array.from(selectedChapterIds);
+        const chaptersToMerge = selectedIds.map(id => appData.find(c => c.id === id)).filter(c => c);
+        
+        const targetChapter = chaptersToMerge[0];
+
+        if (!targetChapter) { selectedChapterIds.clear(); return; }
+
+        const originalName = targetChapter.name;
+        
+        for (let i = 1; i < chaptersToMerge.length; i++) {
+            const sourceChapter = chaptersToMerge[i];
+            targetChapter.images.push(...sourceChapter.images);
+            appData = appData.filter(c => c.id !== sourceChapter.id);
+        }
+
+        selectedChapterIds.clear();
+        targetChapter.name = `${originalName} (Fusionado)`;
+        targetChapter.images.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'})); 
+        
+        // COMMIT + RENDER
+        commitState("Fusionar capítulos");
+        render();
+        renderFinalPreview();
+        showToast(`✨ Fusionados ${chaptersToMerge.length} capítulos en "${targetChapter.name}"`);
+    }
+
+
+    // --- SCROLL, VISUALIZER Y MODALES (Sin Cambios en la lógica de mutación) ---
+    
+    function scrollChapter(chapterId, direction) {
+        const container = document.getElementById(`images-${chapterId}`);
+        if (!container) return;
+        const scrollAmount = 64 * 5; 
+        container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+    }
+
+    function toggleImageSelection(key) {
+        if (selectedImages.has(key)) {
+            selectedImages.delete(key);
+        } else {
+            selectedImages.add(key);
+        }
+        render(); 
+        updateHistoryButtons(); 
+    }
+
+    let currentImageIndex = 0;
+    let readerImageList = [];
+
+    function buildReaderImageList() {
+        readerImageList = [];
+        if (coverImage) { readerImageList.push({ url: coverImage.url, isCover: true }); }
+        appData.forEach(ch => { 
+            ch.images.forEach(img => readerImageList.push({ url: img.url, isCover: false })); 
+        });
+    }
+
+    function openVisualizerModal(initialIndex = 0) {
+        buildReaderImageList();
+        
+        if (readerImageList.length === 0) {
+            return showToast("⚠️ No hay imágenes para visualizar.", "error");
+        }
+        
+        currentImageIndex = initialIndex;
+        visualizerModal.style.display = 'flex';
+        updateVisualizerImage();
+    }
+
+    function closeVisualizerModal() {
+        visualizerModal.style.display = 'none';
+        visualizerImageContainer.innerHTML = '';
+    }
+    
+    function navigateReader(direction) {
+        const newIndex = currentImageIndex + direction;
+        if (newIndex >= 0 && newIndex < readerImageList.length) {
+            currentImageIndex = newIndex;
+            updateVisualizerImage();
+        }
+    }
+
+    function updateVisualizerImage() {
+        if (readerImageList.length === 0) return;
+
+        const imgData = readerImageList[currentImageIndex];
+        
+        visualizerImageContainer.innerHTML = '';
+        const imgEl = document.createElement('img');
+        imgEl.src = imgData.url;
+        imgEl.alt = imgData.isCover ? 'Portada' : `Página ${currentImageIndex + 1}`;
+        
+        visualizerImageContainer.appendChild(imgEl);
+        
+        visualizerCounter.textContent = `${currentImageIndex + 1} / ${readerImageList.length}`;
+        
+        navLeft.disabled = currentImageIndex === 0;
+        navRight.disabled = currentImageIndex === readerImageList.length - 1;
+        
+        navLeft.style.opacity = navLeft.disabled ? 0.4 : 1;
+        navRight.style.opacity = navRight.disabled ? 0.4 : 1;
+    }
+
+    // Listeners del modal lector
+    visualizeBtn.onclick = () => openVisualizerModal(0);
+    visualizerCloseBtn.onclick = closeVisualizerModal;
+    navLeft.onclick = () => navigateReader(-1);
+    navRight.onclick = () => navigateReader(1);
+    
+    document.addEventListener('keydown', (e) => {
+        if (visualizerModal.style.display === 'flex') {
+            if (e.key === 'ArrowLeft') {
+                navigateReader(-1);
+            } else if (e.key === 'ArrowRight') {
+                navigateReader(1);
+            } else if (e.key === 'Escape') {
+                closeVisualizerModal();
+            }
+        }
+    });
+
+    function renderFinalPreview() {
+        finalPreview.innerHTML = '';
+        
+        let allImages = [];
+        if(coverImage) { allImages.push({ url: coverImage.url, isCover: true }); }
+        appData.forEach(ch => { ch.images.forEach(img => allImages.push({ url: img.url, isCover: false })); });
+
+        if (allImages.length === 0) {
+            finalPreview.innerHTML = '<p style="color:var(--text-secondary); font-size:13px; grid-column: 1/-1; text-align:center;">No hay imágenes cargadas aún.</p>';
+            return;
+        }
+
+        allImages.forEach((img, idx) => {
+            const item = document.createElement('div');
+            item.className = 'preview-item';
+            
+            item.onclick = () => openVisualizerModal(idx);
+            
+            const image = document.createElement('img');
+            image.src = img.url;
+            
+            item.appendChild(image);
+            
+            if (img.isCover) {
+                const badge = document.createElement('div');
+                badge.className = 'preview-cover-badge';
+                badge.textContent = 'PORTADA';
+                item.appendChild(badge);
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'preview-badge';
+                badge.textContent = idx + 1;
+                item.appendChild(badge);
+            }
+            
+            finalPreview.appendChild(item);
+        });
+    }
+
+    function openDeleteModal(id, name) {
+        deleteTargetId = id;
+        
+        document.getElementById('confirmDeleteBtn').onclick = handleModalAction;
+
+        if (id === 'MERGE') {
+            confirmModalTitle.textContent = "Confirmar Fusión";
+            document.getElementById('deleteModalText').innerHTML = `Se fusionarán ${selectedChapterIds.size} capítulos en el primero seleccionado. Los demás serán eliminados.`;
+            document.getElementById('confirmDeleteBtn').textContent = "✨ Fusionar";
+            document.getElementById('confirmDeleteBtn').style.background = 'var(--primary)';
+        } else if (id === 'RESET') {
+            confirmModalTitle.textContent = "Confirmar Reinicio";
+            document.getElementById('deleteModalText').innerHTML = `Vas a eliminar <b>TODOS</b> los datos y la portada.`;
+            document.getElementById('confirmDeleteBtn').textContent = "🔄 Reiniciar";
+            document.getElementById('confirmDeleteBtn').style.background = 'var(--error)';
+        } else if (id === 'SELECTED_IMAGES') {
+             confirmModalTitle.textContent = "Eliminar Imágenes";
+            document.getElementById('deleteModalText').innerHTML = `Vas a eliminar <b>${name}</b> seleccionadas.`;
+            document.getElementById('confirmDeleteBtn').textContent = "🗑️ Eliminar";
+            document.getElementById('confirmDeleteBtn').style.background = 'var(--error)';
+        } else {
+            confirmModalTitle.textContent = "Eliminar Capítulo";
+            document.getElementById('deleteModalText').innerHTML = `Vas a eliminar <b>"${name}"</b>.<br>¿Estás seguro?`;
+            document.getElementById('confirmDeleteBtn').textContent = "🗑️ Eliminar";
+            document.getElementById('confirmDeleteBtn').style.background = 'var(--error)';
+        }
+        
+        modal.style.display = 'flex';
+    }
+
+    function handleModalAction() {
+        modal.style.display = 'none';
+
+        if (deleteTargetId === 'MERGE') {
+            mergeSelectedChaptersFinal();
+        } else if (deleteTargetId === 'RESET') {
+            handleReset();
+        } else if (deleteTargetId === 'SELECTED_IMAGES') {
+            deleteSelectedImagesFinal();
+        } else {
+            handleDefaultDelete();
+        }
+        deleteTargetId = null;
+    }
+    
+    function handleReset() {
+        // MUTATE: Limpieza de estado
+        appData.forEach(ch => ch.images.forEach(img => URL.revokeObjectURL(img.url)));
+        if (coverImage) URL.revokeObjectURL(coverImage.url);
+
+        appData = []; coverImage = null;
+        coverPreview.src = ''; coverPreview.classList.remove('active');
+        coverPlaceholder.style.display = 'block'; coverActions.classList.remove('has-image');
+        document.getElementById('coverInput').value = ''; document.getElementById('fileInput').value = '';
+
+        // COMMIT + RENDER
+        commitState("Reiniciar todo");
+        render(); 
+        renderFinalPreview();
+        showToast('🔄 Todo reiniciado');
+    }
+
+    document.getElementById('cancelDeleteBtn').onclick = () => { modal.style.display = 'none'; deleteTargetId = null; };
+    
+    // Listener de Reset Global
+    document.getElementById('resetBtn').onclick = () => {
+        if (appData.length > 0 || coverImage) {
+            openDeleteModal('RESET', '');
+        }
+    };
+
+
+    // --- DESCARGA ---
+    const getFmt = () => {
+        const v = document.getElementById('numberFormat').value;
+        return (n) => v === '0001' ? String(n).padStart(4,'0') : (v === '001' ? String(n).padStart(3,'0') : String(n).padStart(2,'0'));
+    };
+
+    async function download(type) {
+        if(!appData.length && !coverImage) return showToast("⚠️ Nada que descargar", "error");
+        showToast(`📦 Generando ${type.toUpperCase()}...`);
+        
+        const zip = new JSZip();
+        const fmt = getFmt();
+        const volName = document.getElementById('volName').value.trim() || "Volumen";
+        const target = type === 'zip' ? zip.folder(volName) : zip;
+        
+        let c = 1;
+
+        if (coverImage) {
+            const ext = coverImage.file.name.substring(coverImage.file.name.lastIndexOf('.'));
+            const v = document.getElementById('numberFormat').value;
+            const coverName = (v === '0001' ? '0000' : (v === '001' ? '000' : '00')) + ext;
+            target.file(coverName, await fetch(coverImage.url).then(r=>r.blob()));
+        }
+        
+        for(const ch of appData) {
+            for(const img of ch.images) {
+                const ext = img.name.substring(img.name.lastIndexOf('.'));
+                target.file(fmt(c++) + ext, await fetch(img.url).then(r=>r.blob()));
+            }
+        }
+        
+        zip.generateAsync({type:"blob"}).then(b => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = volName + "." + type;
+            a.click();
+            showToast("✅ Descarga lista");
+        });
+    }
+
+    document.getElementById('zipBtn').onclick = () => download('zip');
+    document.getElementById('cbzBtn').onclick = () => download('cbz');
+
+    function showToast(msg, type = "success") {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.className = 'show';
+        if (type === 'error') t.className += ' error';
+        setTimeout(() => { t.className = ''; }, 3000);
+    }
+
+    // Al cargar, aseguramos que se renderice todo
+    render();
+    renderFinalPreview();
+</script>
+
+</body>
+</html>
