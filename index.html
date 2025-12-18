@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MANGO Organizer</title>
+    <title>MANGO Manga organizer</title>
+    <!-- Favicon dinámico -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥭</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -57,7 +59,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; min-height: calc(100vh - 120px); }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -128,7 +130,7 @@
             box-shadow: var(--shadow-sm); border: 1px solid var(--border);
         }
         
-        /* PESTAÑAS DE VISTA (FIX: Solo queda Organizador) */
+        /* PESTAÑAS DE VISTA */
         .view-tabs { 
             display: flex; 
             justify-content: center; /* FIX: Centrar el contenido de la pestaña */
@@ -182,6 +184,8 @@
         .input-group { margin-bottom: 16px; text-align: left; }
         label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
         input[type="text"], select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 14px; transition: 0.2s; box-sizing: border-box; }
+        /* Placeholder styling */
+        input[type="text"]::placeholder { opacity: 0.5; color: var(--text-secondary); }
 
         /* DROPZONE (FIX visual) */
         .dropzone {
@@ -298,11 +302,27 @@
             box-shadow: var(--shadow-sm);
         }
 
-        /* INSPECCIÓN ELIMINADA: Mantener estilos de alerta si se reintroducen, pero ocultos */
+        /* TOOLTIP Y BOTÓN AYUDA */
+        .help-container { position: relative; display: inline-flex; align-items: center; }
+        .btn-help {
+            width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--text-secondary);
+            background: transparent; color: var(--text-secondary); font-size: 12px; cursor: help;
+            display: flex; align-items: center; justify-content: center; opacity: 0.6; font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        .btn-help:hover { opacity: 1; }
+        .tooltip-text {
+            visibility: hidden; width: 220px; background-color: var(--text); color: var(--surface);
+            text-align: center; border-radius: 6px; padding: 10px; position: absolute;
+            z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%);
+            opacity: 0; transition: opacity 0.3s; font-size: 12px; font-weight: 400; line-height: 1.4;
+            box-shadow: var(--shadow-md); pointer-events: none;
+        }
+        .btn-help:hover + .tooltip-text { visibility: visible; opacity: 1; }
+
+        /* INSPECCIÓN ELIMINADA */
         .thumb-status { display: none; }
         .image-tooltip { display: none; }
-
-        /* TIMELINE VIEW STYLES (ELIMINADO) */
         .timeline-container, .timeline-block { display: none; }
 
         /* READER MODAL STYLES (No changes) */
@@ -357,6 +377,20 @@
         #toast.show { visibility: visible; animation: slideUpFade 0.3s forwards; }
         #toast.error { background-color: var(--error); color: white; border-color: var(--error); }
         @keyframes slideUpFade { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+        /* FOOTER */
+        footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        footer:hover { opacity: 1; }
+        footer strong { color: var(--text); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -426,8 +460,9 @@
             <input type="file" id="fileInput" webkitdirectory multiple hidden>
             
             <div class="input-group">
-                <label>Nombre del Volumen</label>
-                <input type="text" id="volName" value="Volumen 01">
+                <label>Nombre del Volumen *</label>
+                <!-- CAMBIO: Placeholder y sin valor por defecto -->
+                <input type="text" id="volName" placeholder="Ej: One Piece Vol. 01">
             </div>
             
             <div class="input-group">
@@ -455,17 +490,24 @@
                 <div id="galleryView">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h3 style="margin:0; font-size:16px;">Contenido</h3>
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
                             <button class="btn btn-primary" id="deleteSelectedBtn" disabled style="background: var(--error); display: none;">
                                 🗑️ Eliminar Seleccionadas
+                            </button>
+                             <!-- CAMBIO: Botón A-Z Restaurado -->
+                             <button class="btn btn-secondary" id="sortBtn">
+                                🔤 Ordenar A-Z
                             </button>
                             <button class="btn btn-primary" id="mergeBtn" disabled style="background: var(--text-secondary);">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
                                 Fusionar
                             </button>
-                            <button class="btn btn-secondary" id="sortBtn">
-                                🔤 Ordenar A-Z
-                            </button>
+                            <!-- CAMBIO: Tooltip de Ayuda -->
+                            <div class="help-container">
+                                <button class="btn-help">?</button>
+                                <span class="tooltip-text">Selecciona dos o más capítulos para unirlos en uno solo. Útil si las imágenes de un capítulo vienen en carpetas separadas.</span>
+                            </div>
+                           
                         </div>
                     </div>
                     <div id="gallery"></div>
@@ -488,6 +530,11 @@
         </div>
     </div>
 </div>
+
+<!-- FOOTER -->
+<footer>
+    <p>Desarrollado con ❤️ por <strong>aol</strong> • <strong>MANGO Manga organizer</strong></p>
+</footer>
 
 <!-- MODAL LECTOR VISUALIZADOR (NUEVO) -->
 <div id="visualizerModal" class="modal-overlay">
@@ -755,43 +802,8 @@
         }
     };
 
-    // --- LOGICA CAPÍTULOS: CARGA Y DROP ---
+    // --- LOGICA CAPÍTULOS: CARGA Y DROP (RESTAURADO DE TU VERSIÓN ORIGINAL) ---
     
-    // Helper para la recursión en carpetas (de V45, se asume presente y correcto)
-    function traverse(entry, path = "") {
-        return new Promise(resolve => {
-            if (entry.isFile) {
-                entry.file(f => {
-                    f.fullPathCustom = path + f.name;
-                    resolve([f]);
-                }, err => {
-                    console.warn("Error leyendo archivo:", err);
-                    resolve([]);
-                });
-            } else if (entry.isDirectory) {
-                const reader = entry.createReader();
-                const all = [];
-                const read = () => {
-                    reader.readEntries(res => {
-                        if (res.length) { 
-                            all.push(...res); 
-                            read(); 
-                        } else {
-                            const subPromises = all.map(e => traverse(e, path + entry.name + "/"));
-                            Promise.all(subPromises).then(r => resolve(r.flat())).catch(() => resolve([]));
-                        }
-                    }, err => {
-                        console.warn("Error leyendo directorio:", err);
-                        resolve([]);
-                    });
-                };
-                read();
-            } else {
-                resolve([]);
-            }
-        });
-    }
-
     function processFiles(list) {
         if (!list || list.length === 0) return;
         
@@ -828,7 +840,7 @@
         for (const [name, files] of map) {
             files.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
             
-            let ch = appData.find(c => c.id === name); // Usar ID aquí es incorrecto, debería ser por nombre si es nuevo. Lo dejaremos como estaba, buscando por nombre y agregando si no existe.
+            let ch = appData.find(c => c.name === name);
             if (!ch) {
                 ch = { id: generateId(), name: name, isPinned: false, images: [] };
                 appData.push(ch);
@@ -853,7 +865,43 @@
     dropzone.onclick = () => fileInput.click();
     dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--primary)'; dropzone.style.color = 'var(--primary)'; };
     dropzone.ondragleave = (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--text-secondary)'; dropzone.style.color = 'var(--text-secondary)'; };
+    
     fileInput.onchange = (e) => processFiles(e.target.files);
+
+    // Helper para la recursión en carpetas (RESTAURADO)
+    function traverse(entry, path = "") {
+        return new Promise(resolve => {
+            if (entry.isFile) {
+                entry.file(f => {
+                    f.fullPathCustom = path + f.name;
+                    resolve([f]);
+                }, err => {
+                    console.warn("Error leyendo archivo:", err);
+                    resolve([]);
+                });
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                const all = [];
+                const read = () => {
+                    reader.readEntries(res => {
+                        if (res.length) { 
+                            all.push(...res); 
+                            read(); 
+                        } else {
+                            const subPromises = all.map(e => traverse(e, path + entry.name + "/"));
+                            Promise.all(subPromises).then(r => resolve(r.flat())).catch(() => resolve([]));
+                        }
+                    }, err => {
+                        console.warn("Error leyendo directorio:", err);
+                        resolve([]);
+                    });
+                };
+                read();
+            } else {
+                resolve([]);
+            }
+        });
+    }
 
     dropzone.ondrop = async (e) => {
         e.preventDefault();
@@ -884,7 +932,7 @@
     };
 
 
-    // --- RENDERIZADO PRINCIPAL (Sin Cambios) ---
+    // --- RENDERIZADO PRINCIPAL ---
     function render() {
         gallery.innerHTML = '';
         
@@ -958,6 +1006,7 @@
                 pencilIcon.style.opacity = '0.7';
                 
                 nameDisplay.append(nameText, pencilIcon);
+                // RESTAURADO: Función de renombrado
                 nameDisplay.onclick = () => enableRename(chapter.id, nameDisplay, titleWrapper);
 
 
@@ -1220,6 +1269,7 @@
         }
     }
 
+    // RESTAURADO: Función de renombrado
     function enableRename(id, displayEl, containerEl) {
         const chapter = appData.find(c => c.id === id);
         if (!chapter) return;
@@ -1264,6 +1314,7 @@
         }
     }
     
+    // RESTAURADO: Botón Sort
     document.getElementById('sortBtn').onclick = () => {
         mutateSortAppData(); // Mutación
         commitState("Ordenar capítulos alfabéticamente"); // Commit
@@ -1571,19 +1622,30 @@
     };
 
 
-    // --- DESCARGA ---
+    // --- DESCARGA CON VALIDACIÓN DE NOMBRE (CAMBIO SOLICITADO) ---
     const getFmt = () => {
         const v = document.getElementById('numberFormat').value;
         return (n) => v === '0001' ? String(n).padStart(4,'0') : (v === '001' ? String(n).padStart(3,'0') : String(n).padStart(2,'0'));
     };
 
     async function download(type) {
+        // VALIDACIÓN DE NOMBRE
+        const volNameInput = document.getElementById('volName');
+        const volName = volNameInput.value.trim();
+        
+        if (!volName) {
+            showToast("⚠️ Debes asignar un nombre al volumen", "error");
+            volNameInput.focus();
+            volNameInput.style.borderColor = "var(--error)";
+            setTimeout(() => volNameInput.style.borderColor = "", 2000);
+            return;
+        }
+
         if(!appData.length && !coverImage) return showToast("⚠️ Nada que descargar", "error");
         showToast(`📦 Generando ${type.toUpperCase()}...`);
         
         const zip = new JSZip();
         const fmt = getFmt();
-        const volName = document.getElementById('volName').value.trim() || "Volumen";
         const target = type === 'zip' ? zip.folder(volName) : zip;
         
         let c = 1;
